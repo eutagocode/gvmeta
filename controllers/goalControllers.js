@@ -81,7 +81,40 @@ const goalControllers = async (req, res) => {
             ),
     });
 
-    res.send(totalGoal);
+    try {
+        await totalGoal.save();
+        res.send(totalGoal);
+    } catch (error) {}
 };
 
-export { goalControllers };
+const updateSold = async (req, res) => {
+    const date = new Date();
+    const id = req.params.id;
+    const newSold = req.body.sold;
+
+    try {
+        await Goal.updateOne({ _id: id }, { $inc: { sold: newSold } });
+
+        const totalGoal = await Goal.find({ _id: id });
+        const goal = totalGoal.map(({ goal }) => goal);
+        const soldValue = totalGoal.map(({ sold }) => sold);
+
+        const updateDaily =
+            (goal[0] - soldValue[0]) /
+            getRemainingBusinessDays(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate(),
+            );
+
+        await Goal.updateOne(
+            { _id: id },
+            { dailyGoal: parseFloat(updateDaily).toFixed(2) },
+        );
+        res.send("Venda adicionada!");
+    } catch (error) {
+        console.log(error);
+    }
+};
+
+export { goalControllers, updateSold };
