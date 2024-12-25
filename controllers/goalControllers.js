@@ -26,6 +26,19 @@ const updatedDaily = async (soldTotal, goal, id) => {
     );
 };
 
+const getData = async (req, res) => {
+    try {
+        const totalGoal = await Goal.find({});
+
+        if (totalGoal.length === 0)
+            return res.status(404).send("Ops, não foi encontrada uma meta!");
+
+        res.send(totalGoal);
+    } catch (error) {
+        res.status(404).send(error);
+    }
+};
+
 const createGoal = async (req, res) => {
     const goalValue = req.body.goal;
 
@@ -169,4 +182,4 @@ const deleteGoal = async (req, res) => {
     }
 };
 
-export { createGoal, updateSold, removeSold, deleteGoal };
+export { getData, createGoal, updateSold, removeSold, deleteGoal };
