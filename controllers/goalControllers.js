@@ -57,9 +57,45 @@ function getRemainingBusinessDays(year, month, currentDay) {
 
 const goalControllers = async (req, res) => {
     const date = new Date();
+    const goalValue = req.body.goal;
+
+    if (goalValue === "" || goalValue === 0) {
+        return res
+            .status(400)
+            .send("Ops, você está tentando mandar um valor vazio como meta.");
+    }
+
+    const existGoal = await Goal.find({});
+
+    if (existGoal.length === 1) {
+        const id = existGoal.map(({ _id }) => _id);
+        const sold = existGoal.map(({ sold }) => sold);
+
+        const updatedGoal = await Goal.updateOne(
+            { _id: id[0] },
+            {
+                goal: goalValue,
+                proportional: proportionalWorkingDays(
+                    date.getFullYear(),
+                    date.getMonth(),
+                    date.getDate(),
+                    goalValue,
+                ),
+                dailyGoal:
+                    (goalValue - sold[0]) /
+                    getRemainingBusinessDays(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        date.getDate(),
+                    ),
+            },
+        );
+        res.send(updatedGoal);
+        return;
+    }
 
     const totalGoal = new Goal({
-        goal: req.body.goal,
+        goal: goalValue,
         proportional: proportionalWorkingDays(
             date.getFullYear(),
             date.getMonth(),
@@ -83,14 +119,22 @@ const goalControllers = async (req, res) => {
 
     try {
         await totalGoal.save();
-        res.send(totalGoal);
-    } catch (error) {}
+        res.send("Meta criada com sucesso!");
+    } catch (error) {
+        res.send(error);
+    }
 };
 
 const updateSold = async (req, res) => {
     const date = new Date();
     const id = req.params.id;
     const newSold = req.body.sold;
+
+    if (newSold === "" || newSold === 0) {
+        return res
+            .status(400)
+            .send(`Não é possível adicionar uma venda com o valor ${newSold}`);
+    }
 
     try {
         await Goal.updateOne({ _id: id }, { $inc: { sold: newSold } });
@@ -107,14 +151,50 @@ const updateSold = async (req, res) => {
                 date.getDate(),
             );
 
+        if (soldValue[0] >= goal[0]) {
+            await Goal.updateOne({ _id: id }, { dailyGoal: 0 });
+            res.send("Venda adicionada com sucesso!");
+            return;
+        }
+
         await Goal.updateOne(
             { _id: id },
             { dailyGoal: parseFloat(updateDaily).toFixed(2) },
         );
-        res.send("Venda adicionada!");
+
+        res.send("Venda adicionada com sucesso!");
     } catch (error) {
-        console.log(error);
+        res.send(error);
     }
 };
 
-export { goalControllers, updateSold };
+const removeSold = async (req, res) => {
+    const id = req.params.id;
+    const soldValue = req.body.sold;
+
+    if (soldValue === "" || soldValue === 0) {
+        return res
+            .status(400)
+            .send(
+                `Não é possível remover uma venda com o valor ${
+                    soldValue === "" ? 0 : soldValue
+                }`,
+            );
+    }
+
+    const totalGoal = await Goal.find({});
+    const filteredSold = totalGoal.map(({ sold }) => sold);
+    const soldTotal = filteredSold[0] - soldValue;
+
+    try {
+        const sold = await Goal.updateOne(
+            { _id: id },
+            { $set: { sold: soldTotal } },
+        );
+        res.send(sold);
+    } catch (error) {
+        return res.status(404).send(error);
+    }
+};
+
+export { goalControllers, updateSold, removeSold };
