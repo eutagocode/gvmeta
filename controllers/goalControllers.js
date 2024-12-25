@@ -1,62 +1,32 @@
 import Goal from "../models/Goal.js";
+import {
+    getRemainingBusinessDays,
+    proportionalWorkingDays,
+} from "./calculateDays.js";
+const date = new Date();
 
-const proportionalWorkingDays = (year, month, currentDay, goal) => {
-    const today = new Date(year, month, currentDay);
-    let lastDay = new Date(year, month + 1, 0);
-
-    let proportional;
-    let proportionalDays = [];
-
-    for (let day = today; day <= lastDay; day.setDate(day.getDate() + 1)) {
-        let dayOfTheWeek = day.getDay();
-        if (dayOfTheWeek !== 0) proportionalDays.push(new Date(day));
-    }
-
-    proportionalDays.map((proportionalDay) => {
-        if (currentDay === proportionalDay.getDate()) {
-            proportional = (currentDay / lastDay.getDate()) * goal;
-        }
-    });
-
-    return Math.round(proportional);
-};
-
-function getRemainingBusinessDays(year, month, currentDay) {
-    const today = new Date(year, month, currentDay);
-    let lastDay = new Date(year, month + 1, 0);
-    const nationalHolidays = [
-        new Date(year, "0", "1"),
-        new Date(year, "1", "12"),
-        new Date(year, "1", "13"),
-        new Date(year, "2", "29"),
-        new Date(year, "3", "21"),
-        new Date(year, "4", "1"),
-        new Date(year, "4", "30"),
-        new Date(year, "8", "7"),
-        new Date(year, "9", "12"),
-        new Date(year, "10", "2"),
-        new Date(year, "10", "15"),
-        new Date(year, "11", "25"),
-    ];
-
-    let businessDaysRemaining = [];
-
-    for (let day = today; day <= lastDay; day.setDate(day.getDate() + 1)) {
-        let dayOfTheWeek = day.getDay();
-        let isHoliday = nationalHolidays.some(
-            (holiday) => holiday.getTime() === day.getTime(),
+const updatedDaily = async (soldTotal, goal, id) => {
+    const updateDaily =
+        (goal - soldTotal) /
+        getRemainingBusinessDays(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
         );
 
-        if (dayOfTheWeek !== 0 && !isHoliday) {
-            businessDaysRemaining.push(new Date(day));
-        }
+    if (soldTotal >= goal) {
+        await Goal.updateOne({ _id: id }, { dailyGoal: 0 });
+        res.send("Venda adicionada com sucesso!");
+        return;
     }
 
-    return businessDaysRemaining.length;
-}
+    await Goal.updateOne(
+        { _id: id },
+        { dailyGoal: parseFloat(updateDaily).toFixed(2) },
+    );
+};
 
-const goalControllers = async (req, res) => {
-    const date = new Date();
+const createGoal = async (req, res) => {
     const goalValue = req.body.goal;
 
     if (goalValue === "" || goalValue === 0) {
@@ -126,7 +96,6 @@ const goalControllers = async (req, res) => {
 };
 
 const updateSold = async (req, res) => {
-    const date = new Date();
     const id = req.params.id;
     const newSold = req.body.sold;
 
@@ -143,24 +112,7 @@ const updateSold = async (req, res) => {
         const goal = totalGoal.map(({ goal }) => goal);
         const soldValue = totalGoal.map(({ sold }) => sold);
 
-        const updateDaily =
-            (goal[0] - soldValue[0]) /
-            getRemainingBusinessDays(
-                date.getFullYear(),
-                date.getMonth(),
-                date.getDate(),
-            );
-
-        if (soldValue[0] >= goal[0]) {
-            await Goal.updateOne({ _id: id }, { dailyGoal: 0 });
-            res.send("Venda adicionada com sucesso!");
-            return;
-        }
-
-        await Goal.updateOne(
-            { _id: id },
-            { dailyGoal: parseFloat(updateDaily).toFixed(2) },
-        );
+        updatedDaily(soldValue[0], goal[0], id);
 
         res.send("Venda adicionada com sucesso!");
     } catch (error) {
@@ -183,8 +135,11 @@ const removeSold = async (req, res) => {
     }
 
     const totalGoal = await Goal.find({});
+    const goal = totalGoal.map(({ goal }) => goal);
     const filteredSold = totalGoal.map(({ sold }) => sold);
     const soldTotal = filteredSold[0] - soldValue;
+
+    updatedDaily(soldTotal, goal, id);
 
     try {
         const sold = await Goal.updateOne(
@@ -199,6 +154,12 @@ const removeSold = async (req, res) => {
 
 const deleteGoal = async (req, res) => {
     const id = req.params.id;
+    const totalGoal = await Goal.find({ _id: id });
+    const _id = totalGoal.map(({ _id }) => _id);
+
+    if (_id[0] != id) {
+        return res.status(404).send("Ops, a sua meta não foi encontrada!");
+    }
 
     try {
         await Goal.deleteOne({ _id: id });
@@ -208,4 +169,4 @@ const deleteGoal = async (req, res) => {
     }
 };
 
-export { goalControllers, updateSold, removeSold, deleteGoal };
+export { createGoal, updateSold, removeSold, deleteGoal };
