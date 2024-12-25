@@ -197,4 +197,15 @@ const removeSold = async (req, res) => {
     }
 };
 
-export { goalControllers, updateSold, removeSold };
+const deleteGoal = async (req, res) => {
+    const id = req.params.id;
+
+    try {
+        await Goal.deleteOne({ _id: id });
+        res.send("Meta apagada com sucesso");
+    } catch (error) {
+        return res.status(404).send(error);
+    }
+};
+
+export { goalControllers, updateSold, removeSold, deleteGoal };
