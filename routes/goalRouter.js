@@ -1,6 +1,7 @@
 import express from "express";
 import {
-    goalControllers,
+    getData,
+    createGoal,
     updateSold,
     removeSold,
     deleteGoal,
@@ -8,7 +9,9 @@ import {
 
 const router = express.Router();
 
-router.post("/creategoal", goalControllers);
+router.get("/", getData);
+
+router.post("/creategoal", createGoal);
 
 router.post("/updatesold/:id", updateSold);
 
