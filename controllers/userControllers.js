@@ -17,8 +17,8 @@ const register = async (req, res) => {
     });
 
     try {
-        const userSaved = await user.save();
-        res.send(userSaved);
+        await user.save();
+        res.send("Usuário criado com sucesso!");
     } catch (error) {
         res.status(400).send(error);
     }
