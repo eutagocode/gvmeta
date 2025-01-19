@@ -2,7 +2,7 @@ import joi from "@hapi/joi";
 
 const registerValidate = (data) => {
     const schema = joi.object({
-        username: joi.string().required().min(3),
+        username: joi.string().min(3),
         email: joi.string().required().min(13),
         password: joi.string().required().min(8),
     });
