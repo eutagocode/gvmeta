@@ -17,6 +17,7 @@ app.use("/gvmeta", goalRouter);
 
 mongoose.connect(process.env.MONGO_CONNECTION_URI);
 
-app.listen(process.env.PORT, () =>
-    console.log("listening on port", process.env.PORT),
-);
+app.listen({
+    host: "0.0.0.0",
+    port: process.env.PORT ?? 3333,
+});
